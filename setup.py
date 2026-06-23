@@ -36,6 +36,7 @@ if not SKIP_CUDA_BUILD:
     import torch
     from torch.utils.cpp_extension import BuildExtension, CUDAExtension, CUDA_HOME
 
+    HAS_SM75 = False
     HAS_SM80 = False
     HAS_SM86 = False
     HAS_SM89 = False
@@ -45,7 +46,7 @@ if not SKIP_CUDA_BUILD:
     HAS_SM121 = False
 
     # Supported NVIDIA GPU architectures.
-    SUPPORTED_ARCHS = {"8.0", "8.6", "8.9", "9.0", "10.0", "12.0", "12.1"}
+    SUPPORTED_ARCHS = {"7.5", "8.0", "8.6", "8.9", "9.0", "10.0", "12.0", "12.1"}
 
     # Compiler flags.
     CXX_FLAGS = ["-g", "-O3", "-fopenmp", "-lgomp", "-std=c++17", "-DENABLE_BF16"]
@@ -71,6 +72,8 @@ if not SKIP_CUDA_BUILD:
     ABI = 1 if torch._C._GLIBCXX_USE_CXX11_ABI else 0
     CXX_FLAGS += [f"-D_GLIBCXX_USE_CXX11_ABI={ABI}"]
     NVCC_FLAGS += [f"-D_GLIBCXX_USE_CXX11_ABI={ABI}"]
+    SM75_NVCC_FLAGS = list(NVCC_FLAGS)
+    FUSED_NVCC_FLAGS = list(NVCC_FLAGS)
 
     if CUDA_HOME is None:
         raise RuntimeError(
@@ -113,7 +116,7 @@ if not SKIP_CUDA_BUILD:
         device_count = torch.cuda.device_count() if torch.cuda.is_available() else 0
         for i in range(device_count):
             major, minor = torch.cuda.get_device_capability(i)
-            if major < 8:
+            if major < 7:
                 warnings.warn(f"skipping GPU {i} with compute capability {major}.{minor}")
                 continue
             compute_capabilities.add(f"{major}.{minor}")
@@ -141,35 +144,68 @@ if not SKIP_CUDA_BUILD:
 
     # Add target compute capabilities to NVCC flags.
     for capability in compute_capabilities:
-        if capability.startswith("8.0"):
+        if capability.startswith("7.5"):
+            HAS_SM75 = True
+            num = "75"
+            target_nvcc_flags = SM75_NVCC_FLAGS
+        elif capability.startswith("8.0"):
             HAS_SM80 = True
             num = "80"
+            target_nvcc_flags = NVCC_FLAGS
         elif capability.startswith("8.6"):
             HAS_SM86 = True
             num = "86"
+            target_nvcc_flags = NVCC_FLAGS
         elif capability.startswith("8.9"):
             HAS_SM89 = True
             num = "89"
+            target_nvcc_flags = NVCC_FLAGS
         elif capability.startswith("9.0"):
             HAS_SM90 = True
             num = "90a"
+            target_nvcc_flags = NVCC_FLAGS
         elif capability.startswith("10.0"):
             HAS_SM100 = True
             num = "100a"
+            target_nvcc_flags = NVCC_FLAGS
         elif capability.startswith("12.0"):
             HAS_SM120 = True
             num = "120a"
+            target_nvcc_flags = NVCC_FLAGS
         elif capability.startswith("12.1"):
             HAS_SM121 = True
             num = "121a"
+            target_nvcc_flags = NVCC_FLAGS
         else:
             continue
-        NVCC_FLAGS += ["-gencode", f"arch=compute_{num},code=sm_{num}"]
+        gencode_flags = ["-gencode", f"arch=compute_{num},code=sm_{num}"]
         if capability.endswith("+PTX"):
-            NVCC_FLAGS += ["-gencode", f"arch=compute_{num},code=compute_{num}"]
+            gencode_flags += ["-gencode", f"arch=compute_{num},code=compute_{num}"]
+        target_nvcc_flags += gencode_flags
+        FUSED_NVCC_FLAGS += gencode_flags
 
     # Fused kernels and QAttn variants
     from torch.utils.cpp_extension import CUDAExtension
+
+    if HAS_SM75:
+        ext_modules.append(
+            CUDAExtension(
+                name="sageattention._qattn_sm75",
+                sources=[
+                    "csrc/sm75/pybind_sm75.cpp",
+                    "csrc/sm75/qk_int_sv_f16_cuda_sm75.cu",
+                    "csrc/sm75/qk_int_sv_f16_varlen_cuda_sm75.cu",
+                ],
+                extra_compile_args={"cxx": CXX_FLAGS, "nvcc": SM75_NVCC_FLAGS},
+            )
+        )
+        ext_modules.append(
+            CUDAExtension(
+                name="sageattention._fused_sm75",
+                sources=["csrc/sm75/pybind_fused.cpp", "csrc/sm75/fused.cu"],
+                extra_compile_args={"cxx": CXX_FLAGS, "nvcc": SM75_NVCC_FLAGS},
+            )
+        )
 
     if HAS_SM80 or HAS_SM86 or HAS_SM89 or HAS_SM90 or HAS_SM100 or HAS_SM120 or HAS_SM121:
         ext_modules.append(
@@ -218,7 +254,7 @@ if not SKIP_CUDA_BUILD:
         CUDAExtension(
             name="sageattention._fused",
             sources=["csrc/fused/pybind.cpp", "csrc/fused/fused.cu"],
-            extra_compile_args={"cxx": CXX_FLAGS, "nvcc": NVCC_FLAGS},
+            extra_compile_args={"cxx": CXX_FLAGS, "nvcc": FUSED_NVCC_FLAGS},
         )
     )
 

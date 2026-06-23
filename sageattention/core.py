@@ -76,6 +76,14 @@ def get_cuda_arch_versions():
     return cuda_archs
 
 
+def get_cuda_arch_for_tensor(tensor: torch.Tensor):
+    device_index = tensor.device.index
+    if device_index is None:
+        device_index = torch.cuda.current_device()
+    major, minor = torch.cuda.get_device_capability(device_index)
+    return f"sm{major}{minor}"
+
+
 def sageattn(
     q: torch.Tensor,
     k: torch.Tensor,
@@ -140,8 +148,11 @@ def sageattn(
     - All tensors must be on the same cuda device.
     """
         
-    arch = get_cuda_arch_versions()[q.device.index]
-    if arch == "sm80":
+    arch = get_cuda_arch_for_tensor(q)
+    if arch == "sm75":
+        from .sm75.core import sageattn as sageattn_sm75
+        return sageattn_sm75(q, k, v, tensor_layout=tensor_layout, is_causal=is_causal, sm_scale=sm_scale, return_lse=return_lse, **kwargs)
+    elif arch == "sm80":
         return sageattn_qk_int8_pv_fp16_cuda(q, k, v, tensor_layout=tensor_layout, is_causal=is_causal, sm_scale=sm_scale, return_lse=return_lse, pv_accum_dtype="fp32")
     elif arch == "sm86":
         return sageattn_qk_int8_pv_fp16_triton(q, k, v, tensor_layout=tensor_layout, is_causal=is_causal, sm_scale=sm_scale, return_lse=return_lse)
@@ -409,6 +420,22 @@ def sageattn_varlen(
     # workaround also make sage attention work compatible with torch.compile
     # through non-fullgraph compile mode.
     torch.cuda.set_device(v.device)
+
+    if get_cuda_arch_for_tensor(q) == "sm75":
+        from .sm75.core import sageattn_varlen as sageattn_varlen_sm75
+        return sageattn_varlen_sm75(
+            q,
+            k,
+            v,
+            cu_seqlens_q,
+            cu_seqlens_k,
+            max_seqlen_q,
+            max_seqlen_k,
+            is_causal=is_causal,
+            sm_scale=sm_scale,
+            smooth_k=smooth_k,
+            **kwargs,
+        )
 
     head_dim_og = q.size(-1)
 
