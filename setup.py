@@ -95,11 +95,15 @@ if not SKIP_CUDA_BUILD:
             os.path.join(cuda_dir, "include", "cccl"),
             os.path.join(cuda_dir, "Library", "include"),
             os.path.join(cuda_dir, "Library", "include", "cccl"),
+            os.path.join(cuda_dir, "Library", "include", "targets", "x64"),
+            os.path.join(cuda_dir, "Library", "include", "targets", "x64", "include"),
             os.path.join(cuda_dir, "targets", "x86_64-linux", "include"),
             os.path.join(sys.prefix, "include"),
             os.path.join(sys.prefix, "include", "cccl"),
             os.path.join(sys.prefix, "Library", "include"),
             os.path.join(sys.prefix, "Library", "include", "cccl"),
+            os.path.join(sys.prefix, "Library", "include", "targets", "x64"),
+            os.path.join(sys.prefix, "Library", "include", "targets", "x64", "include"),
         ]
         for root in [sys.prefix, *site.getsitepackages()]:
             candidates += [
@@ -131,7 +135,35 @@ if not SKIP_CUDA_BUILD:
             )
         return include_dirs
 
+    def discover_cuda_library_dirs(cuda_dir: str):
+        """Find CUDA library roots used by split conda/pip CUDA packages."""
+        candidates = [
+            os.path.join(cuda_dir, "lib64"),
+            os.path.join(cuda_dir, "lib", "x64"),
+            os.path.join(cuda_dir, "Library", "lib"),
+            os.path.join(sys.prefix, "Library", "lib"),
+        ]
+        for root in [sys.prefix, *site.getsitepackages()]:
+            candidates += [
+                os.path.join(root, "nvidia", "cuda_runtime", "lib"),
+                os.path.join(root, "nvidia", "cuda_runtime", "lib", "x64"),
+            ]
+
+        env_library_dirs = os.getenv("SAGEATTN_EXTRA_LIBRARY_DIRS", "").strip()
+        if env_library_dirs:
+            candidates += [p for p in env_library_dirs.split(os.pathsep) if p]
+
+        library_dirs = []
+        seen = set()
+        for path in candidates:
+            norm = os.path.normpath(path)
+            if norm not in seen and os.path.isdir(norm):
+                seen.add(norm)
+                library_dirs.append(norm)
+        return library_dirs
+
     EXTRA_INCLUDE_DIRS = discover_cuda_include_dirs(CUDA_HOME)
+    EXTRA_LIBRARY_DIRS = discover_cuda_library_dirs(CUDA_HOME)
 
     def get_nvcc_cuda_version(cuda_dir: str) -> Version:
         """Get the CUDA version from nvcc.
@@ -262,6 +294,7 @@ if not SKIP_CUDA_BUILD:
                     "csrc/sm75/qk_int_sv_f16_varlen_cuda_sm75.cu",
                 ],
                 include_dirs=EXTRA_INCLUDE_DIRS,
+                library_dirs=EXTRA_LIBRARY_DIRS,
                 extra_compile_args={"cxx": CXX_FLAGS, "nvcc": SM75_NVCC_FLAGS},
             )
         )
@@ -270,6 +303,7 @@ if not SKIP_CUDA_BUILD:
                 name="sageattention._fused_sm75",
                 sources=["csrc/sm75/pybind_fused.cpp", "csrc/sm75/fused.cu"],
                 include_dirs=EXTRA_INCLUDE_DIRS,
+                library_dirs=EXTRA_LIBRARY_DIRS,
                 extra_compile_args={"cxx": CXX_FLAGS, "nvcc": SM75_NVCC_FLAGS},
             )
         )
@@ -283,6 +317,7 @@ if not SKIP_CUDA_BUILD:
                     "csrc/qattn/qk_int_sv_f16_cuda_sm80.cu",
                 ],
                 include_dirs=EXTRA_INCLUDE_DIRS,
+                library_dirs=EXTRA_LIBRARY_DIRS,
                 extra_compile_args={"cxx": CXX_FLAGS, "nvcc": NVCC_FLAGS},
             )
         )
@@ -302,6 +337,7 @@ if not SKIP_CUDA_BUILD:
                     "csrc/qattn/sm89_qk_int8_sv_f8_accum_f16_fuse_v_scale_attn_inst_buf.cu",
                 ],
                 include_dirs=EXTRA_INCLUDE_DIRS,
+                library_dirs=EXTRA_LIBRARY_DIRS,
                 extra_compile_args={"cxx": CXX_FLAGS, "nvcc": NVCC_FLAGS},
             )
         )
@@ -316,6 +352,7 @@ if not SKIP_CUDA_BUILD:
                     "csrc/qattn/qk_int_sv_f8_cuda_sm90.cu",
                 ],
                 include_dirs=EXTRA_INCLUDE_DIRS,
+                library_dirs=EXTRA_LIBRARY_DIRS,
                 extra_compile_args={"cxx": CXX_FLAGS, "nvcc": NVCC_FLAGS},
                 extra_link_args=cuda_driver_link_args,
             )
@@ -326,6 +363,7 @@ if not SKIP_CUDA_BUILD:
             name="sageattention._fused",
             sources=["csrc/fused/pybind.cpp", "csrc/fused/fused.cu"],
             include_dirs=EXTRA_INCLUDE_DIRS,
+            library_dirs=EXTRA_LIBRARY_DIRS,
             extra_compile_args={"cxx": CXX_FLAGS, "nvcc": FUSED_NVCC_FLAGS},
         )
     )
