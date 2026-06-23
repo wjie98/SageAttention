@@ -1874,7 +1874,7 @@ void launch_varlen_attention_fwd(
   constexpr size_t smem_size = 2 * block_n * head_dim * sizeof(T);
   if (is_causal)
   {
-    VarlenAttentionFwdKernel<T, IndexT, head_dim, true><<<grid, block, smem_size, at::cuda::getCurrentCUDAStream()>>>(
+    VarlenAttentionFwdKernel<T, IndexT, head_dim, true><<<grid, block, smem_size, c10::cuda::getCurrentCUDAStream()>>>(
         reinterpret_cast<T *>(query.data_ptr()),
         reinterpret_cast<T *>(key.data_ptr()),
         reinterpret_cast<T *>(value.data_ptr()),
@@ -1887,7 +1887,7 @@ void launch_varlen_attention_fwd(
   }
   else
   {
-    VarlenAttentionFwdDirectKernel<T, IndexT, head_dim, false><<<grid, block, 0, at::cuda::getCurrentCUDAStream()>>>(
+    VarlenAttentionFwdDirectKernel<T, IndexT, head_dim, false><<<grid, block, 0, c10::cuda::getCurrentCUDAStream()>>>(
         reinterpret_cast<T *>(query.data_ptr()),
         reinterpret_cast<T *>(key.data_ptr()),
         reinterpret_cast<T *>(value.data_ptr()),

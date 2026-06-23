@@ -15,10 +15,16 @@
  */
 
 #pragma once
-#include <torch/extension.h>
+#include "torch_compat.h"
 #include <cstdint>
 #include <sstream>
 #include <stdexcept>
+
+#if defined(_MSC_VER)
+#define SAGE_FUNC_NAME __FUNCSIG__
+#else
+#define SAGE_FUNC_NAME __PRETTY_FUNCTION__
+#endif
 
 #define DISPATCH_HEAD_DIM(head_dim, HEAD_DIM, ...)              \
   if (head_dim == 64) {                                         \
@@ -81,7 +87,7 @@
     __VA_ARGS__                                                                         \
   } else {                                                                              \
     std::ostringstream oss;                                                             \
-    oss << __PRETTY_FUNCTION__ << " failed to dispatch data type " << pytorch_dtype;    \
+    oss << SAGE_FUNC_NAME << " failed to dispatch data type " << pytorch_dtype;         \
     TORCH_CHECK(false, oss.str());                                                      \
   }
 

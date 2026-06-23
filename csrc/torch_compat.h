@@ -16,4 +16,5 @@
 
 #pragma once
 
-#include "../torch_compat.h"
+#include <ATen/ATen.h>
+#include <c10/cuda/CUDAStream.h>

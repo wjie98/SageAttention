@@ -17,7 +17,7 @@
 #include "../utils.cuh"
 #include <cuda_fp16.h>
 #include <cuda_pipeline_primitives.h>
-#include <torch/extension.h>
+#include "../torch_compat.h"
 
 #include "../cp_async.cuh"
 #include "../mma.cuh"
@@ -671,12 +671,12 @@ __global__ void qk_int_sv_f16_attn_kernel(int8_t *__restrict__ Q, int8_t *__rest
 }
 
 // tensor_layout 0 for [B, N, H, D], 1 for [B, H, N, D]
-torch::Tensor qk_int8_sv_f16_accum_f32_attn(torch::Tensor query,
-                    torch::Tensor key,
-                    torch::Tensor value,
-                    torch::Tensor output,
-                    torch::Tensor query_scale,
-                    torch::Tensor key_scale,
+at::Tensor qk_int8_sv_f16_accum_f32_attn(at::Tensor query,
+                    at::Tensor key,
+                    at::Tensor value,
+                    at::Tensor output,
+                    at::Tensor query_scale,
+                    at::Tensor key_scale,
                     int tensor_layout,
                     int is_causal,
                     int qk_quant_gran,
@@ -697,11 +697,11 @@ torch::Tensor qk_int8_sv_f16_accum_f32_attn(torch::Tensor query,
   CHECK_CONTIGUOUS(query_scale);
   CHECK_CONTIGUOUS(key_scale);
 
-  CHECK_DTYPE(query, torch::kInt8);
-  CHECK_DTYPE(key, torch::kInt8);
-  CHECK_DTYPE(value, torch::kHalf);
-  CHECK_DTYPE(query_scale, torch::kFloat32);
-  CHECK_DTYPE(key_scale, torch::kFloat32);
+  CHECK_DTYPE(query, at::ScalarType::Char);
+  CHECK_DTYPE(key, at::ScalarType::Char);
+  CHECK_DTYPE(value, at::ScalarType::Half);
+  CHECK_DTYPE(query_scale, at::ScalarType::Float);
+  CHECK_DTYPE(key_scale, at::ScalarType::Float);
 
   CHECK_DIMS(query, 4);
   CHECK_DIMS(key, 4);
@@ -773,10 +773,10 @@ torch::Tensor qk_int8_sv_f16_accum_f32_attn(torch::Tensor query,
 
   const int num_kv_groups = num_qo_heads / num_kv_heads;
 
-  torch::Tensor lse = torch::empty({0});
+  at::Tensor lse = at::empty({0});
   if (return_lse)
   {
-    lse = torch::empty({batch_size, num_qo_heads, qo_len}, query.options().dtype(torch::kFloat32));
+    lse = at::empty({batch_size, num_qo_heads, qo_len}, query.options().dtype(at::ScalarType::Float));
   }
 
   auto output_dtype = output.scalar_type();
@@ -845,12 +845,12 @@ torch::Tensor qk_int8_sv_f16_accum_f32_attn(torch::Tensor query,
   return lse;
 }
 
-torch::Tensor qk_int8_sv_f16_accum_f16_attn(torch::Tensor query,
-                    torch::Tensor key,
-                    torch::Tensor value,
-                    torch::Tensor output,
-                    torch::Tensor query_scale,
-                    torch::Tensor key_scale,
+at::Tensor qk_int8_sv_f16_accum_f16_attn(at::Tensor query,
+                    at::Tensor key,
+                    at::Tensor value,
+                    at::Tensor output,
+                    at::Tensor query_scale,
+                    at::Tensor key_scale,
                     int tensor_layout,
                     int is_causal,
                     int qk_quant_gran,
@@ -871,11 +871,11 @@ torch::Tensor qk_int8_sv_f16_accum_f16_attn(torch::Tensor query,
   CHECK_CONTIGUOUS(query_scale);
   CHECK_CONTIGUOUS(key_scale);
 
-  CHECK_DTYPE(query, torch::kInt8);
-  CHECK_DTYPE(key, torch::kInt8);
-  CHECK_DTYPE(value, torch::kHalf);
-  CHECK_DTYPE(query_scale, torch::kFloat32);
-  CHECK_DTYPE(key_scale, torch::kFloat32);
+  CHECK_DTYPE(query, at::ScalarType::Char);
+  CHECK_DTYPE(key, at::ScalarType::Char);
+  CHECK_DTYPE(value, at::ScalarType::Half);
+  CHECK_DTYPE(query_scale, at::ScalarType::Float);
+  CHECK_DTYPE(key_scale, at::ScalarType::Float);
 
   CHECK_DIMS(query, 4);
   CHECK_DIMS(key, 4);
@@ -945,10 +945,10 @@ torch::Tensor qk_int8_sv_f16_accum_f16_attn(torch::Tensor query,
     throw std::invalid_argument(err_msg.str());  
   }
 
-  torch::Tensor lse = torch::empty({0});
+  at::Tensor lse = at::empty({0});
   if (return_lse)
   {
-    lse = torch::empty({batch_size, num_qo_heads, qo_len}, query.options().dtype(torch::kFloat32));
+    lse = at::empty({batch_size, num_qo_heads, qo_len}, query.options().dtype(at::ScalarType::Float));
   }
 
   const int num_kv_groups = num_qo_heads / num_kv_heads;
@@ -1020,12 +1020,12 @@ torch::Tensor qk_int8_sv_f16_accum_f16_attn(torch::Tensor query,
   return lse;
 }
 
-torch::Tensor qk_int8_sv_f16_accum_f16_attn_inst_buf(torch::Tensor query,
-                    torch::Tensor key,
-                    torch::Tensor value,
-                    torch::Tensor output,
-                    torch::Tensor query_scale,
-                    torch::Tensor key_scale,
+at::Tensor qk_int8_sv_f16_accum_f16_attn_inst_buf(at::Tensor query,
+                    at::Tensor key,
+                    at::Tensor value,
+                    at::Tensor output,
+                    at::Tensor query_scale,
+                    at::Tensor key_scale,
                     int tensor_layout,
                     int is_causal,
                     int qk_quant_gran,
@@ -1046,11 +1046,11 @@ torch::Tensor qk_int8_sv_f16_accum_f16_attn_inst_buf(torch::Tensor query,
   CHECK_CONTIGUOUS(query_scale);
   CHECK_CONTIGUOUS(key_scale);
 
-  CHECK_DTYPE(query, torch::kInt8);
-  CHECK_DTYPE(key, torch::kInt8);
-  CHECK_DTYPE(value, torch::kHalf);
-  CHECK_DTYPE(query_scale, torch::kFloat32);
-  CHECK_DTYPE(key_scale, torch::kFloat32);
+  CHECK_DTYPE(query, at::ScalarType::Char);
+  CHECK_DTYPE(key, at::ScalarType::Char);
+  CHECK_DTYPE(value, at::ScalarType::Half);
+  CHECK_DTYPE(query_scale, at::ScalarType::Float);
+  CHECK_DTYPE(key_scale, at::ScalarType::Float);
 
   CHECK_DIMS(query, 4);
   CHECK_DIMS(key, 4);
@@ -1120,10 +1120,10 @@ torch::Tensor qk_int8_sv_f16_accum_f16_attn_inst_buf(torch::Tensor query,
     throw std::invalid_argument(err_msg.str());  
   }
 
-  torch::Tensor lse = torch::empty({0});
+  at::Tensor lse = at::empty({0});
   if (return_lse)
   {
-    lse = torch::empty({batch_size, num_qo_heads, qo_len}, query.options().dtype(torch::kFloat32));
+    lse = at::empty({batch_size, num_qo_heads, qo_len}, query.options().dtype(at::ScalarType::Float));
   }
 
   const int num_kv_groups = num_qo_heads / num_kv_heads;
@@ -1195,13 +1195,13 @@ torch::Tensor qk_int8_sv_f16_accum_f16_attn_inst_buf(torch::Tensor query,
   return lse;
 }
 
-torch::Tensor qk_int8_sv_f16_accum_f16_fuse_v_mean_attn(torch::Tensor query,
-                    torch::Tensor key,
-                    torch::Tensor value,
-                    torch::Tensor output,
-                    torch::Tensor query_scale,
-                    torch::Tensor key_scale,
-                    torch::Tensor value_mean,
+at::Tensor qk_int8_sv_f16_accum_f16_fuse_v_mean_attn(at::Tensor query,
+                    at::Tensor key,
+                    at::Tensor value,
+                    at::Tensor output,
+                    at::Tensor query_scale,
+                    at::Tensor key_scale,
+                    at::Tensor value_mean,
                     int tensor_layout,
                     int is_causal,
                     int qk_quant_gran,
@@ -1224,11 +1224,11 @@ torch::Tensor qk_int8_sv_f16_accum_f16_fuse_v_mean_attn(torch::Tensor query,
   CHECK_CONTIGUOUS(key_scale);
   CHECK_CONTIGUOUS(value_mean);
 
-  CHECK_DTYPE(query, torch::kInt8);
-  CHECK_DTYPE(key, torch::kInt8);
-  CHECK_DTYPE(value, torch::kHalf);
-  CHECK_DTYPE(query_scale, torch::kFloat32);
-  CHECK_DTYPE(key_scale, torch::kFloat32);
+  CHECK_DTYPE(query, at::ScalarType::Char);
+  CHECK_DTYPE(key, at::ScalarType::Char);
+  CHECK_DTYPE(value, at::ScalarType::Half);
+  CHECK_DTYPE(query_scale, at::ScalarType::Float);
+  CHECK_DTYPE(key_scale, at::ScalarType::Float);
 
   CHECK_DIMS(query, 4);
   CHECK_DIMS(key, 4);
@@ -1299,10 +1299,10 @@ torch::Tensor qk_int8_sv_f16_accum_f16_fuse_v_mean_attn(torch::Tensor query,
     throw std::invalid_argument(err_msg.str());  
   }
 
-  torch::Tensor lse = torch::empty({0});
+  at::Tensor lse = at::empty({0});
   if (return_lse)
   {
-    lse = torch::empty({batch_size, num_qo_heads, qo_len}, query.options().dtype(torch::kFloat32));
+    lse = at::empty({batch_size, num_qo_heads, qo_len}, query.options().dtype(at::ScalarType::Float));
   }
 
   const int num_kv_groups = num_qo_heads / num_kv_heads;
