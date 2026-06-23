@@ -17,7 +17,7 @@
 #include "../utils.cuh"
 #include <cuda_fp16.h>
 #include <cuda_pipeline_primitives.h>
-#include <torch/extension.h>
+#include "torch_compat.h"
 #include <algorithm>
 #include <sstream>
 #include <stdexcept>
@@ -485,14 +485,14 @@ template <uint32_t CTA_Q, uint32_t CTA_K, uint32_t WARP_Q, uint32_t WARP_K,
           uint32_t HEAD_DIM, typename IndexT, typename DTypeOut,
           MaskMode mask_mode>
 static void launch_qk_int_sv_f16_varlen_attn(
-    torch::Tensor query,
-    torch::Tensor key,
-    torch::Tensor value,
-    torch::Tensor output,
-    torch::Tensor query_scale,
-    torch::Tensor key_scale,
-    torch::Tensor cu_seqlens_q,
-    torch::Tensor cu_seqlens_k,
+    at::Tensor query,
+    at::Tensor key,
+    at::Tensor value,
+    at::Tensor output,
+    at::Tensor query_scale,
+    at::Tensor key_scale,
+    at::Tensor cu_seqlens_q,
+    at::Tensor cu_seqlens_k,
     int batch_size,
     int max_seqlen_q,
     int max_seqlen_k,
@@ -543,15 +543,15 @@ static void launch_qk_int_sv_f16_varlen_attn(
       sm_scale);
 }
 
-torch::Tensor qk_int8_sv_f16_varlen_accum_f32_attn(
-    torch::Tensor query,
-    torch::Tensor key,
-    torch::Tensor value,
-    torch::Tensor output,
-    torch::Tensor query_scale,
-    torch::Tensor key_scale,
-    torch::Tensor cu_seqlens_q,
-    torch::Tensor cu_seqlens_k,
+at::Tensor qk_int8_sv_f16_varlen_accum_f32_attn(
+    at::Tensor query,
+    at::Tensor key,
+    at::Tensor value,
+    at::Tensor output,
+    at::Tensor query_scale,
+    at::Tensor key_scale,
+    at::Tensor cu_seqlens_q,
+    at::Tensor cu_seqlens_k,
     int max_seqlen_q,
     int max_seqlen_k,
     int is_causal,
@@ -575,11 +575,11 @@ torch::Tensor qk_int8_sv_f16_varlen_accum_f32_attn(
   CHECK_CONTIGUOUS(cu_seqlens_q);
   CHECK_CONTIGUOUS(cu_seqlens_k);
 
-  CHECK_DTYPE(query, torch::kInt8);
-  CHECK_DTYPE(key, torch::kInt8);
-  CHECK_DTYPE(value, torch::kHalf);
-  CHECK_DTYPE(query_scale, torch::kFloat32);
-  CHECK_DTYPE(key_scale, torch::kFloat32);
+  CHECK_DTYPE(query, at::ScalarType::Char);
+  CHECK_DTYPE(key, at::ScalarType::Char);
+  CHECK_DTYPE(value, at::ScalarType::Half);
+  CHECK_DTYPE(query_scale, at::ScalarType::Float);
+  CHECK_DTYPE(key_scale, at::ScalarType::Float);
 
   CHECK_DIMS(query, 3);
   CHECK_DIMS(key, 3);
@@ -613,13 +613,13 @@ torch::Tensor qk_int8_sv_f16_varlen_accum_f32_attn(
   const int num_kv_groups = num_qo_heads / num_kv_heads;
   auto output_dtype = output.scalar_type();
   auto index_dtype = cu_seqlens_q.scalar_type();
-  torch::Tensor lse = torch::empty({0});
+  at::Tensor lse = at::empty({0});
 
   DISPATCH_HEAD_DIM(head_dim, HEAD_DIM, {
     DISPATCH_CAUSAL(is_causal, IS_CAUSAL, {
       DISPATCH_PYTORCH_DTYPE_TO_CTYPE_FP16(output_dtype, DTypeOut, {
         constexpr MaskMode mask_mode = IS_CAUSAL ? MaskMode::kCausal : MaskMode::kNone;
-        if (index_dtype == torch::kInt32)
+        if (index_dtype == at::ScalarType::Int)
         {
           if (is_sm75_varlen_device())
           {
@@ -644,7 +644,7 @@ torch::Tensor qk_int8_sv_f16_varlen_accum_f32_attn(
                 sm_scale);
           }
         }
-        else if (index_dtype == torch::kInt64)
+        else if (index_dtype == at::ScalarType::Long)
         {
           if (is_sm75_varlen_device())
           {

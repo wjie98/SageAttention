@@ -52,7 +52,7 @@ if not SKIP_CUDA_BUILD:
 
     # Compiler flags.
     if IS_WINDOWS:
-        CXX_FLAGS = ["/O2", "/std:c++17", "/DENABLE_BF16"]
+        CXX_FLAGS = ["/O2", "/std:c++17", "/DENABLE_BF16", "/DWIN32_LEAN_AND_MEAN", "/DNOMINMAX"]
     else:
         CXX_FLAGS = ["-g", "-O3", "-fopenmp", "-lgomp", "-std=c++17", "-DENABLE_BF16"]
     NVCC_FLAGS = [
@@ -61,10 +61,12 @@ if not SKIP_CUDA_BUILD:
         "-U__CUDA_NO_HALF_OPERATORS__",
         "-U__CUDA_NO_HALF_CONVERSIONS__",
         "--use_fast_math",
-        "--threads=8",
+        f"--threads={1 if IS_WINDOWS else 8}",
         "-Xptxas=-v",
         "-diag-suppress=174",
     ]
+    if IS_WINDOWS:
+        NVCC_FLAGS += ["-DWIN32_LEAN_AND_MEAN", "-DNOMINMAX"]
 
     # Append flags from env if provided
     cxx_append = os.getenv("CXX_APPEND_FLAGS", "").strip()
@@ -290,9 +292,9 @@ if not SKIP_CUDA_BUILD:
             pass
     # Defaults if not provided
     if parallel is None:
-        parallel = 4
-    # Ensure MAX_JOBS for underlying tooling if not explicitly set
-    os.environ.setdefault('MAX_JOBS', '32')
+        parallel = 1 if IS_WINDOWS else 4
+    # Keep ninja parallelism in sync with extension-level parallelism.
+    os.environ['MAX_JOBS'] = str(parallel)
 
     class BuildExtensionSeparateDir(BuildExtension):
         build_extension_patch_lock = threading.Lock()

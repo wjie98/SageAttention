@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#include <ATen/cuda/CUDAContext.h>
-#include <torch/extension.h>
+#include "torch_compat.h"
 
 #include "dispatch_utils.h"
 #include "../utils.cuh"
@@ -707,9 +706,9 @@ __global__ void MeanScaleKernel(T *__restrict__ input, int8_t *__restrict__ outp
 }
 
 void quant_per_block_int8_cuda(
-                torch::Tensor input,
-                torch::Tensor output,
-                torch::Tensor scale,
+                at::Tensor input,
+                at::Tensor output,
+                at::Tensor scale,
                 float sm_scale,
                 int block_size,
                 int tensor_layout)
@@ -718,8 +717,8 @@ void quant_per_block_int8_cuda(
   CHECK_CUDA(output);
   CHECK_CUDA(scale);
 
-  CHECK_DTYPE(output, torch::kInt8);
-  CHECK_DTYPE(scale, torch::kFloat);
+  CHECK_DTYPE(output, at::ScalarType::Char);
+  CHECK_DTYPE(scale, at::ScalarType::Float);
 
   CHECK_LASTDIM_CONTIGUOUS(input);
   CHECK_CONTIGUOUS(output);
@@ -790,9 +789,9 @@ void quant_per_block_int8_cuda(
 }
 
 void quant_per_block_int8_cuda(
-                torch::Tensor input,
-                torch::Tensor output,
-                torch::Tensor scale,
+                at::Tensor input,
+                at::Tensor output,
+                at::Tensor scale,
                 int block_size,
                 int tensor_layout)
 {
@@ -800,8 +799,8 @@ void quant_per_block_int8_cuda(
   CHECK_CUDA(output);
   CHECK_CUDA(scale);
 
-  CHECK_DTYPE(output, torch::kInt8);
-  CHECK_DTYPE(scale, torch::kFloat);
+  CHECK_DTYPE(output, at::ScalarType::Char);
+  CHECK_DTYPE(scale, at::ScalarType::Float);
 
   CHECK_LASTDIM_CONTIGUOUS(input);
   CHECK_CONTIGUOUS(output);
@@ -872,10 +871,10 @@ void quant_per_block_int8_cuda(
 }
 
 void quant_per_block_int8_fuse_sub_mean_cuda(
-                torch::Tensor input,
-                torch::Tensor mean,
-                torch::Tensor output,
-                torch::Tensor scale,
+                at::Tensor input,
+                at::Tensor mean,
+                at::Tensor output,
+                at::Tensor scale,
                 int block_size,
                 int tensor_layout)
 {
@@ -884,8 +883,8 @@ void quant_per_block_int8_fuse_sub_mean_cuda(
   CHECK_CUDA(output);
   CHECK_CUDA(scale);
 
-  CHECK_DTYPE(output, torch::kInt8);
-  CHECK_DTYPE(scale, torch::kFloat);
+  CHECK_DTYPE(output, at::ScalarType::Char);
+  CHECK_DTYPE(scale, at::ScalarType::Float);
 
   CHECK_LASTDIM_CONTIGUOUS(input);
   CHECK_CONTIGUOUS(mean);
@@ -963,9 +962,9 @@ void quant_per_block_int8_fuse_sub_mean_cuda(
 
 // use block size 128 and warp_block size 32
 void quant_per_warp_int8_cuda(
-                torch::Tensor input,
-                torch::Tensor output,
-                torch::Tensor scale,
+                at::Tensor input,
+                at::Tensor output,
+                at::Tensor scale,
                 int block_size,
                 int warp_block_size,
                 int tensor_layout)
@@ -974,8 +973,8 @@ void quant_per_warp_int8_cuda(
   CHECK_CUDA(output);
   CHECK_CUDA(scale);
 
-  CHECK_DTYPE(output, torch::kInt8);
-  CHECK_DTYPE(scale, torch::kFloat);
+  CHECK_DTYPE(output, at::ScalarType::Char);
+  CHECK_DTYPE(scale, at::ScalarType::Float);
 
   CHECK_LASTDIM_CONTIGUOUS(input);
   CHECK_CONTIGUOUS(output);
@@ -1048,12 +1047,12 @@ void quant_per_warp_int8_cuda(
 }
 
 void quant_qk_per_warp_int8_cuda(
-                torch::Tensor query,
-                torch::Tensor key,
-                torch::Tensor query_output,
-                torch::Tensor key_output,
-                torch::Tensor query_scale,
-                torch::Tensor key_scale,
+                at::Tensor query,
+                at::Tensor key,
+                at::Tensor query_output,
+                at::Tensor key_output,
+                at::Tensor query_scale,
+                at::Tensor key_scale,
                 int query_block_size,
                 int query_warp_block_size,
                 int key_block_size,
@@ -1066,10 +1065,10 @@ void quant_qk_per_warp_int8_cuda(
   CHECK_CUDA(query_scale);
   CHECK_CUDA(key_scale);
 
-  CHECK_DTYPE(query_output, torch::kInt8);
-  CHECK_DTYPE(key_output, torch::kInt8);
-  CHECK_DTYPE(query_scale, torch::kFloat);
-  CHECK_DTYPE(key_scale, torch::kFloat);
+  CHECK_DTYPE(query_output, at::ScalarType::Char);
+  CHECK_DTYPE(key_output, at::ScalarType::Char);
+  CHECK_DTYPE(query_scale, at::ScalarType::Float);
+  CHECK_DTYPE(key_scale, at::ScalarType::Float);
 
   CHECK_LASTDIM_CONTIGUOUS(query);
   CHECK_LASTDIM_CONTIGUOUS(key);
@@ -1176,10 +1175,10 @@ void quant_qk_per_warp_int8_cuda(
 }
 
 void quant_per_warp_int8_varlen_cuda(
-                torch::Tensor input,
-                torch::Tensor cu_seqlens,
-                torch::Tensor output,
-                torch::Tensor scale,
+                at::Tensor input,
+                at::Tensor cu_seqlens,
+                at::Tensor output,
+                at::Tensor scale,
                 int max_seqlen,
                 int block_size,
                 int warp_block_size)
@@ -1189,8 +1188,8 @@ void quant_per_warp_int8_varlen_cuda(
   CHECK_CUDA(output);
   CHECK_CUDA(scale);
 
-  CHECK_DTYPE(output, torch::kInt8);
-  CHECK_DTYPE(scale, torch::kFloat);
+  CHECK_DTYPE(output, at::ScalarType::Char);
+  CHECK_DTYPE(scale, at::ScalarType::Float);
 
   CHECK_LASTDIM_CONTIGUOUS(input);
   CHECK_CONTIGUOUS(cu_seqlens);
@@ -1226,7 +1225,7 @@ void quant_per_warp_int8_varlen_cuda(
           dim3 grid((max_seqlen + BLOCK_SIZE - 1) / BLOCK_SIZE * (BLOCK_SIZE / WARP_BLOCK_SIZE), num_heads, batch_size);
           dim3 block(WARP_BLOCK_SIZE * (HEAD_DIM / 8) / num_pack_per_thread);
 
-          if (index_dtype == torch::kInt32)
+          if (index_dtype == at::ScalarType::Int)
           {
             QuantInt8VarlenKernel<HEAD_DIM, WARP_BLOCK_SIZE, num_pack_per_thread, int32_t, c_type><<<grid, block>>>(
                 reinterpret_cast<c_type *>(input.data_ptr()),
@@ -1237,7 +1236,7 @@ void quant_per_warp_int8_varlen_cuda(
                 stride_seq_output, stride_h_output,
                 scale.stride(0), scale.stride(1));
           }
-          else if (index_dtype == torch::kInt64)
+          else if (index_dtype == at::ScalarType::Long)
           {
             QuantInt8VarlenKernel<HEAD_DIM, WARP_BLOCK_SIZE, num_pack_per_thread, int64_t, c_type><<<grid, block>>>(
                 reinterpret_cast<c_type *>(input.data_ptr()),
@@ -1261,9 +1260,9 @@ void quant_per_warp_int8_varlen_cuda(
 }
 
 void sub_mean_cuda(
-                torch::Tensor input,
-                torch::Tensor mean,
-                torch::Tensor output,
+                at::Tensor input,
+                at::Tensor mean,
+                at::Tensor output,
                 int tensor_layout)
 {
   CHECK_CUDA(input);
@@ -1278,7 +1277,7 @@ void sub_mean_cuda(
   CHECK_DIMS(mean, 3);
   CHECK_DIMS(output, 4);
 
-  CHECK_DTYPE(output, torch::kHalf);
+  CHECK_DTYPE(output, at::ScalarType::Half);
 
   const int batch_size = input.size(0);
   const int head_dim = input.size(3);
@@ -1341,8 +1340,8 @@ void sub_mean_cuda(
 }
 
 void transpose_pad_permute_cuda(
-                torch::Tensor input,
-                torch::Tensor output,
+                at::Tensor input,
+                at::Tensor output,
                 int tensor_layout)
 {
   CHECK_CUDA(input);
@@ -1416,9 +1415,9 @@ void transpose_pad_permute_cuda(
 }
 
 void scale_fuse_quant_cuda(
-                torch::Tensor input,
-                torch::Tensor output,
-                torch::Tensor scale,
+                at::Tensor input,
+                at::Tensor output,
+                at::Tensor scale,
                 int num_tokens,
                 float scale_max,
                 int tensor_layout)
@@ -1427,8 +1426,8 @@ void scale_fuse_quant_cuda(
   CHECK_CUDA(output);
   CHECK_CUDA(scale);
 
-  // CHECK_DTYPE(output, torch::kInt8);
-  CHECK_DTYPE(scale, torch::kFloat);
+  // CHECK_DTYPE(output, at::ScalarType::Char);
+  CHECK_DTYPE(scale, at::ScalarType::Float);
 
   CHECK_CONTIGUOUS(input);
   CHECK_CONTIGUOUS(output);
@@ -1493,10 +1492,10 @@ void scale_fuse_quant_cuda(
 }
 
 void mean_scale_fuse_quant_cuda(
-                torch::Tensor input,
-                torch::Tensor output,
-                torch::Tensor mean,
-                torch::Tensor scale,
+                at::Tensor input,
+                at::Tensor output,
+                at::Tensor mean,
+                at::Tensor scale,
                 int num_tokens,
                 float scale_max,
                 int tensor_layout)
@@ -1506,9 +1505,9 @@ void mean_scale_fuse_quant_cuda(
   CHECK_CUDA(mean);
   CHECK_CUDA(scale);
 
-  // CHECK_DTYPE(output, torch::kInt8);
-  CHECK_DTYPE(mean, torch::kFloat);
-  CHECK_DTYPE(scale, torch::kFloat);
+  // CHECK_DTYPE(output, at::ScalarType::Char);
+  CHECK_DTYPE(mean, at::ScalarType::Float);
+  CHECK_DTYPE(scale, at::ScalarType::Float);
 
   CHECK_CONTIGUOUS(input);
   CHECK_CONTIGUOUS(output);
@@ -1854,12 +1853,12 @@ __global__ void VarlenAttentionFwdKernel(
 
 template <typename T, typename IndexT, uint32_t head_dim>
 void launch_varlen_attention_fwd(
-    torch::Tensor query,
-    torch::Tensor key,
-    torch::Tensor value,
-    torch::Tensor cu_seqlens_q,
-    torch::Tensor cu_seqlens_k,
-    torch::Tensor output,
+    at::Tensor query,
+    at::Tensor key,
+    at::Tensor value,
+    at::Tensor cu_seqlens_q,
+    at::Tensor cu_seqlens_k,
+    at::Tensor output,
     int max_seqlen_q,
     float sm_scale,
     int is_causal)
@@ -1902,12 +1901,12 @@ void launch_varlen_attention_fwd(
 }
 
 void varlen_attention_fwd_cuda(
-                torch::Tensor query,
-                torch::Tensor key,
-                torch::Tensor value,
-                torch::Tensor cu_seqlens_q,
-                torch::Tensor cu_seqlens_k,
-                torch::Tensor output,
+                at::Tensor query,
+                at::Tensor key,
+                at::Tensor value,
+                at::Tensor cu_seqlens_q,
+                at::Tensor cu_seqlens_k,
+                at::Tensor output,
                 int max_seqlen_q,
                 float sm_scale,
                 int is_causal)
@@ -1937,7 +1936,7 @@ void varlen_attention_fwd_cuda(
   TORCH_CHECK(query.scalar_type() == value.scalar_type(), "query and value must have the same dtype");
   TORCH_CHECK(query.scalar_type() == output.scalar_type(), "query and output must have the same dtype");
   TORCH_CHECK(cu_seqlens_q.scalar_type() == cu_seqlens_k.scalar_type(), "cu_seqlens_q and cu_seqlens_k must have the same dtype");
-  TORCH_CHECK(cu_seqlens_q.scalar_type() == torch::kInt32 || cu_seqlens_q.scalar_type() == torch::kInt64,
+  TORCH_CHECK(cu_seqlens_q.scalar_type() == at::ScalarType::Int || cu_seqlens_q.scalar_type() == at::ScalarType::Long,
               "cu_seqlens tensors must have dtype int32 or int64");
 
   const int total_q = query.size(0);
@@ -1958,7 +1957,7 @@ void varlen_attention_fwd_cuda(
 
   DISPATCH_PYTORCH_DTYPE_TO_CTYPE_FP16(input_dtype, c_type, {
     DISPATCH_HEAD_DIM(head_dim, HEAD_DIM, {
-      if (cu_seqlens_q.scalar_type() == torch::kInt32)
+      if (cu_seqlens_q.scalar_type() == at::ScalarType::Int)
       {
         launch_varlen_attention_fwd<c_type, int32_t, HEAD_DIM>(
             query, key, value, cu_seqlens_q, cu_seqlens_k, output, max_seqlen_q, sm_scale, is_causal);
