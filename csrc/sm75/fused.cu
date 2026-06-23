@@ -24,6 +24,8 @@
 #include "cp_async.cuh"
 #include <cuda_fp16.h>
 #include <cuda_bf16.h>
+#include <stdexcept>
+#include <type_traits>
 
 enum class QuantType
 {

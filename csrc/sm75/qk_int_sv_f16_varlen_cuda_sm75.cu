@@ -18,6 +18,10 @@
 #include <cuda_fp16.h>
 #include <cuda_pipeline_primitives.h>
 #include <torch/extension.h>
+#include <algorithm>
+#include <sstream>
+#include <stdexcept>
+#include <type_traits>
 
 #include "cp_async.cuh"
 #include "mma.cuh"

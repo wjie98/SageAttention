@@ -36,6 +36,8 @@ if not SKIP_CUDA_BUILD:
     import torch
     from torch.utils.cpp_extension import BuildExtension, CUDAExtension, CUDA_HOME
 
+    IS_WINDOWS = sys.platform.startswith("win")
+
     HAS_SM75 = False
     HAS_SM80 = False
     HAS_SM86 = False
@@ -49,7 +51,10 @@ if not SKIP_CUDA_BUILD:
     SUPPORTED_ARCHS = {"7.5", "8.0", "8.6", "8.9", "9.0", "10.0", "12.0", "12.1"}
 
     # Compiler flags.
-    CXX_FLAGS = ["-g", "-O3", "-fopenmp", "-lgomp", "-std=c++17", "-DENABLE_BF16"]
+    if IS_WINDOWS:
+        CXX_FLAGS = ["/O2", "/std:c++17", "/DENABLE_BF16"]
+    else:
+        CXX_FLAGS = ["-g", "-O3", "-fopenmp", "-lgomp", "-std=c++17", "-DENABLE_BF16"]
     NVCC_FLAGS = [
         "-O3",
         "-std=c++17",
@@ -69,9 +74,10 @@ if not SKIP_CUDA_BUILD:
     if nvcc_append:
         NVCC_FLAGS += nvcc_append.split()
 
-    ABI = 1 if torch._C._GLIBCXX_USE_CXX11_ABI else 0
-    CXX_FLAGS += [f"-D_GLIBCXX_USE_CXX11_ABI={ABI}"]
-    NVCC_FLAGS += [f"-D_GLIBCXX_USE_CXX11_ABI={ABI}"]
+    if not IS_WINDOWS:
+        ABI = 1 if torch._C._GLIBCXX_USE_CXX11_ABI else 0
+        CXX_FLAGS += [f"-D_GLIBCXX_USE_CXX11_ABI={ABI}"]
+        NVCC_FLAGS += [f"-D_GLIBCXX_USE_CXX11_ABI={ABI}"]
     SM75_NVCC_FLAGS = list(NVCC_FLAGS)
     FUSED_NVCC_FLAGS = list(NVCC_FLAGS)
 
@@ -84,7 +90,8 @@ if not SKIP_CUDA_BUILD:
 
         Adapted from https://github.com/NVIDIA/apex/blob/8b7a1ff183741dd8f9b87e7bafd04cfde99cea28/setup.py
         """
-        nvcc_output = subprocess.check_output([cuda_dir + "/bin/nvcc", "-V"],
+        nvcc = os.path.join(cuda_dir, "bin", "nvcc")
+        nvcc_output = subprocess.check_output([nvcc, "-V"],
                                               universal_newlines=True)
         output = nvcc_output.split()
         release_idx = output.index("release") + 1
@@ -128,6 +135,16 @@ if not SKIP_CUDA_BUILD:
             "No target compute capabilities. Set TORCH_CUDA_ARCH_LIST or build on a machine with GPUs.")
     else:
         print(f"Target compute capabilities: {compute_capabilities}")
+
+    unsupported_archs = sorted(
+        cc for cc in compute_capabilities
+        if (cc[:-4] if cc.endswith("+PTX") else cc) not in SUPPORTED_ARCHS
+    )
+    if unsupported_archs:
+        raise RuntimeError(
+            f"Unsupported CUDA architecture(s): {unsupported_archs}. "
+            f"Supported architectures are: {sorted(SUPPORTED_ARCHS)}"
+        )
 
     # Validate the NVCC CUDA version.
     if nvcc_cuda_version < Version("12.0"):
@@ -238,6 +255,7 @@ if not SKIP_CUDA_BUILD:
         )
 
     if HAS_SM90:
+        cuda_driver_link_args = ["cuda.lib"] if IS_WINDOWS else ["-lcuda"]
         ext_modules.append(
             CUDAExtension(
                 name="sageattention._qattn_sm90",
@@ -246,7 +264,7 @@ if not SKIP_CUDA_BUILD:
                     "csrc/qattn/qk_int_sv_f8_cuda_sm90.cu",
                 ],
                 extra_compile_args={"cxx": CXX_FLAGS, "nvcc": NVCC_FLAGS},
-                extra_link_args=['-lcuda'],
+                extra_link_args=cuda_driver_link_args,
             )
         )
 
